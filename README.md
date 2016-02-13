@@ -1,15 +1,18 @@
-## Glome Notification Broker (GNB)
+## Duplex Message Broker (DMB)
 
-GNB is a simple message broker written in Node.js. It sits between Glome's Redis
-server and the web clients connecting via websockets (or HTTP).
+DMB is a simple message broker forked from Glome Notification Broker. It
+lets backend and frontend clients to register and exchange messages. The
+underlying architecture uses Redis for message storing, and websockets
+for client connection (both backend and frontend).
 
-GNB establishes two connections to the Redis server for duplex communication.
+DMB establishes two connections to the Redis server for duplex
+communication.
 
-One of the connections is the __downlink__ that carries messages from Glome
-towards the clients.
+One of the connections is the __downlink__ that carries messages from
+Redis towards the clients.
 
 The other connection is the __uplink__ that transfers messages from the
-clients towards Glome.
+clients towards Redis.
 
 ### Installation
 
@@ -25,69 +28,99 @@ This command will download the dependcies into the node_modules directory.
   $ node index.js
 ```
 
-This command will start the broker with default configuration, ie. listening on
-port 8082.
+This command will start the broker with default configuration, ie.
+listening on port 8082.
 
 ### Configuration
 
 The following envrironment variables can be used to configure the broker:
 
- * <i>GNB_PORT</i>
+ * <i>DMB_PORT</i>
 
-    The port where GNB is listening for incoming requests (default: 8082).
+    The port where DMB is listening for incoming requests (default: 8082).
 
- * <i>GLOME_REDIS_HOST</i>
+ * <i>REDIS_HOST</i>
 
-    Host name of Glome's Redis server to connect to (default: localhost).
+    Host name of the Redis server to connect to (default: localhost).
 
- * <i>GLOME_REDIS_PORT</i>
+ * <i>REDIS_PORT</i>
 
-    Port of Glome's Redis server (default: 6379).
+    Port of the Redis server (default: 6379).
 
 ### Redis channels
 
- * <i>glome:{uid}</i>
+ * <i>dmb:register</i>
 
-    For downlink where {uid} identifies the 3rd party Glome service. The {uid}
-    is allocated when requesting [Glome API access](https://devland.glome.me).
+    Backend services uses this channel to register at DMB. They send a
+    {bk_connect} message. DMB will assign a dedicated channel for the
+    service. Following that DKM sends a {bkid} that can be used by the
+    backend to address the dedicated channel.
 
- * <i>glome:app</i>
+    {bk_connect} message specification:
 
-    For uplink purposes (when the client sends messages to Glome).
+    TODO
 
-### Client events
+    {bk_connect_ack} from DMB:
+
+    TODO
+
+ * <i>dmb:{bkid}</i>
+
+    For downlink where {bkid} identifies a backend service that sends /
+    receives messages to / from clients. The {bkid} is allocated
+    automatically when a backend service registers at the {dmb:register}
+    channel (see above).
+
+    {bk_message} message specification:
+
+    TODO
+
+    {bk_message_ack} from DMB:
+
+    TODO
+
+ * <i>dmb:uplink</i>
+
+    For uplink purposes (when the client sends messages to a backend
+    service).
+
+    TODO
+
+### Backend client events
 
  The following events can be emitted by the clients:
 
- * <i>gnb:connect</i>
+ * <i>dmb:reconnect</i>
 
-    A service wants its user to get connected to GNB.
+    A backend client wants to connect to DMB. Upon connection DMB will
+    assign and send a {bid} that can be used as a dedicated channel for
+    sending messages.
 
- * <i>gnb:disconnect</i>
+ * <i>dmb:disconnect</i>
 
-    A service wants its user to be disconnected from GNB.
+    A backend service disconnects from DMB. DMB will free the {bid} and
+    clear the corresponding Redis channel.
 
-### GNB events
+### Frontend client events
+
+
+### DMB events
 
  These are the events that are emitted by GNB so that the clients can listen
  to them:
 
- * <i>gnb:connected</i>
+ * <i>dmb:connected</i>
 
-    The client has succesfully connected to GNB.
+    The client has succesfully connected to DMB.
 
- * <i>gnb:broadcast</i>
+ * <i>dmb:broadcast</i>
 
-    Glome sends a broadcast to all users of a service.
+    The backend service sends a broadcast to all users of the service.
 
- * <i>gnb:message</i>
+ * <i>dmb:direct</i>
 
-    Glome sends a direct message to a specific user of a service.
-
- * <i>gnb:notification</i>
-
-    Glome sends a direct message to a specific client. It is meant only for
-    machine to machine communication.
+    The backend service sends a direct message to a specific user of the
+    service.
 
 ### Firewall and web server setup
 

@@ -1,43 +1,23 @@
 /**
- * Simple message broker that sits between a Redis server and the web clients
- * connecting via websockets.
+ * Duplex Message Broker (DMB)
  *
  * Envrironment variables that can be used:
  *
- * o GNB_PORT: the port where this app is listening (default: 8082)
- * o GLOME_REDIS_HOST: Host name of Glome's Redis server to connect to (default: localhost)
- * o GLOME_REDIS_PORT: Port of Glome's Redis server (default: 6379)
+ * o DMB_PORT: the port where DMB is listening (default: 8082)
+ * o REDIS_HOST: Host name of the Redis server to connect to (default: localhost)
+ * o REDIS_PORT: Port of the Redis server (default: 6379)
  *
- * The broker establishes two Redis connections for duplex communication.
- * One channel is the downlink that carries messages from Glome towards the
- * clients. The other connection is the uplink that transfers messages from the
- * clients towards Glome.
- *
- * Redis channels used:
- *
- * o downlink: glome:{uid} where {uid} identifies the 3rd part Glome service
- * o uplink: glome:app
- *
- * Events emitted by the client:
- *
- * o gnb:connect: a service wants its user to get connected to GNB
- * o gnb:disconnect: a service wants its user to be disconnected from GNB
- *
- * Events emitted by GNB:
- *
- * o gnb:connected: the client has succesfully connected to GNB
- * o gnb:broadcast: Glome sends a broadcast to all users of a service
- * o gnb:message: Glome sends a direct message to a specific user of a service
- * o gnb:notification: Glome sends a direct message to a specific client app,
- *                     meant only for machine to machine communication.
- *
+ * See README.md for details.
  *
  * Author: ferenc at glome dot me
  * License: MIT
+ *
+ * Copyright (c) 2016 Ferenc Székely
  * Copyright (c) 2014-2015 Glome Oy
  *
+ * Forked from glome/gnb
+ *
  */
-
 var sockets = {};
 var numUsers = 0;
 
@@ -47,19 +27,19 @@ var express = require('express');
 var app = express();
 var server = require('http').createServer(app);
 var io = require('socket.io')(server);
-var port = process.env.GNB_PORT || 8082;
+var port = process.env.DMB_PORT || 8082;
 
 // Glome Redis connection
 var redis = require("redis");
-var redis_port = process.env.GLOME_REDIS_PORT || 6379;
-var redis_host = process.env.GLOME_REDIS_HOST || "localhost";
+var redis_port = process.env.REDIS_PORT || 6379;
+var redis_host = process.env.REDIS_HOST || "localhost";
 var redis_options = {};
 
-var glome_downstream = "glome:gnb:downstream";
-var glome_upstream = "glome:gnb:upstream";
+var dmb_downstream = "dmb:downstream";
+var dmb_upstream = "dmb:upstream";
 
-var glome_uplink = redis.createClient(redis_port, redis_host, redis_options);
-var glome_downlink = redis.createClient(redis_port, redis_host, redis_options);
+var redis_uplink = redis.createClient(redis_port, redis_host, redis_options);
+var redis_downlink = redis.createClient(redis_port, redis_host, redis_options);
 
 // configuration that is received upon subscription
 var config = {
@@ -79,8 +59,8 @@ app.get('/', function(req, res) {
   res.sendFile(path.join(__dirname + '/public/welcome.html'));
 });
 
-// Connect to Redis to receive message from Glome API server
-glome_downlink.subscribe(glome_downstream);
+// Connect to Redis to receive message from backend clients
+redis_downlink.subscribe(glome_downstream);
 
 /**
  * Message received via redis is dispatched here.
@@ -111,7 +91,7 @@ glome_downlink.subscribe(glome_downstream);
  *   uid:notification:{token}:notification:[paired|unpaired|locked|unlocked|brother|unbrother|erased]
  *
  */
-glome_downlink.on("message", function (channel, message) {
+redis_downlink.on("message", function (channel, message) {
   if (message == "config") {
     // TODO: future
   } else {
