@@ -1,3 +1,12 @@
+#
+# W O R K     I N     P R O G R E S S
+#
+# Please do not use the code yet!
+#
+########################################################################
+
+
+
 ## Duplex Message Broker (DMB)
 
 DMB is a simple message broker forked from Glome Notification Broker. It
