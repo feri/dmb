@@ -21,22 +21,25 @@
 var sockets = {};
 var numUsers = 0;
 
+var config = require('./config');
+
 //var debug = require('debug');
 var path = require('path');
 var express = require('express');
 var app = express();
 var server = require('http').createServer(app);
 var io = require('socket.io')(server);
-var port = process.env.DMB_PORT || 8082;
+var host = process.env.DMB_HOST || config.host || "dmb.local";
+var port = process.env.DMB_PORT || config.port || 8084;
 
 // Glome Redis connection
 var redis = require("redis");
-var redis_port = process.env.REDIS_PORT || 6379;
-var redis_host = process.env.REDIS_HOST || "localhost";
+var redis_host = process.env.REDIS_HOST || config.redis.host || "localhost";
+var redis_port = process.env.REDIS_PORT || config.redis.port || 6379;
 var redis_options = {};
 
-var dmb_downstream = "dmb:downstream";
 var dmb_upstream = "dmb:upstream";
+var dmb_downstream = "dmb:downstream";
 
 var redis_uplink = redis.createClient(redis_port, redis_host, redis_options);
 var redis_downlink = redis.createClient(redis_port, redis_host, redis_options);
@@ -44,14 +47,12 @@ var redis_downlink = redis.createClient(redis_port, redis_host, redis_options);
 // configuration that is received upon subscription
 var config = {
   separator: ':',
-  data_label: 'data',
   message_label: 'message',
-  broadcast_label: 'broadcast',
-  notification_label: 'notification',
+  broadcast_label: 'broadcast'
 };
 
-server.listen(port, function () {
-  console.log('Server listening at port %d', port);
+server.listen(port, host, function () {
+  console.log('Server listening on %s at port %d', host, port);
 });
 
 // Simple routing
@@ -59,78 +60,87 @@ app.get('/', function(req, res) {
   res.sendFile(path.join(__dirname + '/public/welcome.html'));
 });
 
-// Connect to Redis to receive message from backend clients
-redis_downlink.subscribe(glome_downstream);
+// The dmb_downstream channel carries messages from backend clients
+redis_downlink.subscribe(dmb_downstream);
 
 /**
- * Message received via redis is dispatched here.
+ * Messages carried by events
  *
- * A message can be:
+ * DMB uses socket.io for websocket implementation, therefore messages
+ * between the various players are embedded into events.
  *
- *  o data to a specific user
- *  o broadcast to all users of the same app (same room) or
- *  o direct message to a specific user
- *  o notification to a specific user
+ * DMS defines the following events:
+ *
+ *
+ *
+ * DMB messages are triplets. Each part of the triplet is separated
+ * by a separator, which is configurable.
  *
  * Message format specification
+ * ============================
  *
- * Data messages:
+ * {header} <separator> {recipient} <separator> {payload}
  *
- *   uid:data:{token}:[invite]:{JSON object}
+ * header: max. 12 bytes hexadecimal string with some reserved words
+ * separator: 1 byte
+ * recipient: max. 12 bytes hexadecimal string with some reserved words
+ * payload: max. 1024 bytes
  *
- * Broadcast messages:
+ * Backend services and regular clients have different privileges for
+ * addressing the recipient(s). The message specification below will
+ * describe the differences.
  *
- *   uid:message:broadcast:content
+ * The payload of the message can be a simple, pure text message or a
+ * JSON encoded data. There are no restrictions on that, except the
+ * size which is 1024 bytes for now.
  *
- * Direct text messages
+ * Message types
+ * =============
  *
- *   uid:message:{token}:content
+ * Backend service to clients (broadcast)
  *
- * Notification messages:
+ *   {bkid}:broadcast:{payload}
  *
- *   uid:notification:{token}:notification:[paired|unpaired|locked|unlocked|brother|unbrother|erased]
+ * Backend service to specific client (direct)
+ *
+ *   {bkid}:{token}:{payload}
+ *
+ * Client to backend service
+ *
+ *   client:backend:{payload}
+ *
+ * Client to client
+ *
+ *   client:{token}:{payload}
  *
  */
 redis_downlink.on("message", function (channel, message) {
+  console.log('redis_downlink received: channel: ' + channel);
+  console.log(message);
   if (message == "config") {
-    // TODO: future
+    // TODO:
+    // helps backend services and clients to set up connections
+    // and gives the schema about the exact messaging protocol that is
+    // is available
   } else {
     //console.log('channel: ' + channel + ', message: ' + message);
-
     if (config.separator) {
       // parse the message and decide what to do
       var splits = message.split(config.separator);
-      var uid = splits[0];
-      var type = splits[1];
-      var token = splits[2];
-      var content = splits[3];
-      var payload = '';
 
-      if (typeof splits[4] != 'undefined')
-      {
-        payload = splits[4];
+      var bkid = splits[0];
+      var token = splits[1];
+      var payload = splits[2];
+
+      if (token == config.broadcast_label) {
+        io.sockets.in(bkid).emit("dmb:broadcast", payload);
+      } else {
+        send("dmb:message", bkid, token, payload);
       }
 
-      console.log('uid: ' + uid + ', type: ' + type + ', token: ' + token);
-      console.log('content: ' + content + ', payload: ' + payload);
-
-      switch (type) {
-        case config.data_label:
-          (payload != '') ? content += ':' + payload : content = content;
-          send("gnb:data", uid, token, content);
-          break;
-        case config.message_label:
-          if (token == config.broadcast_label) {
-            io.sockets.in(uid).emit("gnb:broadcast", content);
-            console.log('broadcast to: ' + uid + ', content: ' + content);
-          } else {
-            send("gnb:message", uid, token, content);
-          }
-          break;
-        case config.notification_label:
-          send("gnb:notification", uid, token, content);
-          break;
-      }
+      console.log('bkid: ' + bkid);
+      console.log('token: ' + token);
+      console.log('payload: ' + payload);
     }
   }
 });
@@ -139,39 +149,48 @@ redis_downlink.on("message", function (channel, message) {
  * Register callbacks
  */
 io.on('connection', function (socket) {
-  // when the client connects
-  // uid is the Glome app's UID
-  // token unique ID of the Glome user
-  socket.on('gnb:connect', function (uid, token) {
-    // the user joins to uid room automatically
-    socket.join(uid, function() {
-      if (typeof token != 'undefined')
-      {
-        socket.username = token;
-        socket.appid = uid;
+  // DMB assigns a unique ID {bkid} for backend service
+  // Regular clients must specify a unique {token}
+  socket.on('dmb:broadcast', function (params) {
+    io.sockets.in(params.bkid).emit("dmb:broadcast", params.payload);
+    console.log('socket broadcast:');
+    console.log(params);
+  });
 
-        if (typeof sockets[token] == 'undefined')
+  // DMB assigns a unique ID {bkid} for backend service
+  // Regular clients must specify a unique {token}
+  socket.on('dmb:connect', function (params) {
+    // the client joins to uid room automatically
+    console.log('dmb:connect params: ');
+    console.log(params);
+    socket.join(params.bkid, function() {
+      if (typeof params.token != 'undefined')
+      {
+        socket.appid = params.bkid;
+        socket.username = params.token;
+
+        if (typeof sockets[params.token] == 'undefined')
         {
-          sockets[token] = [];
+          sockets[params.token] = [];
         }
 
-        sockets[token].push(socket.id);
+        sockets[params.token].push(socket.id);
 
-        var lastsid = sockets[token][sockets[token].length - 1];
-        socket.emit('gnb:connected', {});
+        var lastsid = sockets[params.token][sockets[params.token].length - 1];
+        socket.emit('dmb:connected', {});
 
-        // tell Glome that a user is connected
+        // push info to DMB about the connected client
         var data = {
           action: 'connect',
           params: {
             socket: socket.id,
-            token: token,
-            uid: uid,
+            token: params.token,
+            bkid: params.bkid,
             sessions: sockets[socket.username].length
           },
         }
-        var enc = new Buffer(JSON.stringify(data)).toString('base64');
-        glome_uplink.publish(glome_upstream, enc);
+        var enc = new Buffer(JSON.stringify(data)).toString(); //('base64');
+        redis_uplink.publish(dmb_upstream, enc);
         data = null;
 
         console.log('new client of ' + socket.username + ', sid: ' + lastsid);
@@ -179,7 +198,7 @@ io.on('connection', function (socket) {
       }
       else
       {
-        console.log('invalid typeof token: ' + typeof token + ': ' + token);
+        console.log('invalid typeof token: ' + typeof params.token + ': ' + params.token);
       }
     });
   });
@@ -195,20 +214,20 @@ io.on('connection', function (socket) {
         console.log(sockets[socket.username]);
 
         sockets[socket.username].splice(index, 1);
-        socket.emit('gnb:disconnected', {});
-        // tell Glome that a user is disconnected
-        // this info should be submitted to 3rd part servers too
+        socket.emit('dmb:disconnected', {});
+
+        // push info to DMB about the disconnected client
         var data = {
           action: 'disconnect',
           params: {
             socket: socket.id,
             token: socket.username,
-            uid: socket.appid,
+            bkid: socket.appid,
             sessions: sockets[socket.username].length
           }
         }
-        var enc = new Buffer(JSON.stringify(data)).toString('base64');
-        glome_uplink.publish(glome_upstream, enc);
+        var enc = new Buffer(JSON.stringify(data)).toString();//('base64');
+        redis_uplink.publish(dmb_upstream, enc);
         data = null;
 
         console.log('client gone: ' + socket.username + ', sid: ' + socket.id);
@@ -225,7 +244,7 @@ io.on('connection', function (socket) {
 /**
  * Message sending
  */
-function send(label, uid, token, content)
+function send(event, bkid, token, payload)
 {
   if (typeof sockets[token] != 'undefined' && sockets[token].length > 0)
   {
@@ -234,7 +253,7 @@ function send(label, uid, token, content)
 
     // send to each and every socket
     sockets[token].forEach(function(socket, index, array) {
-      io.sockets.to(socket).emit(label, content);
+      io.sockets.to(socket).emit(event, payload);
       console.log('sent to ' + socket);
     });
   }

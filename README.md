@@ -5,8 +5,6 @@
 #
 ########################################################################
 
-
-
 ## Duplex Message Broker (DMB)
 
 DMB is a simple message broker forked from Glome Notification Broker. It
@@ -14,14 +12,13 @@ lets backend and frontend clients to register and exchange messages. The
 underlying architecture uses Redis for message storing, and websockets
 for client connection (both backend and frontend).
 
-DMB establishes two connections to the Redis server for duplex
-communication.
+DMB sets up two connections to Redis for duplex communication.
 
 One of the connections is the __downlink__ that carries messages from
-Redis towards the clients.
+backend service via Redis towards the clients.
 
-The other connection is the __uplink__ that transfers messages from the
-clients towards Redis.
+The other connection is the __uplink__ that transfers messages other way
+around, from the clients via Redis towards the backend services.
 
 ### Installation
 
@@ -29,7 +26,8 @@ clients towards Redis.
   $ npm install
 ```
 
-This command will download the dependcies into the node_modules directory.
+This command will download the dependencies into the node_modules
+directory.
 
 ### Start
 

@@ -1,10 +1,10 @@
 {
-  "name": "gnb",
+  "name": "dmb",
   "version": "0.0.1",
-  "description": " Glome Notification Broker is a simple notification broker for Glome enabled services.",
+  "description": " Duplex Message Broker (DMB) is a simple message broker.",
   "repository": {
     "type": "git",
-    "url": "git@github.com:glome/gnb.git"
+    "url": "https://github.com/feri/dmb.git"
   },
   "dependencies": {
     "debug": ">=2.1.0",
@@ -14,6 +14,6 @@
   },
   "maintainers": [{
     "name": "ferenc",
-    "email": "ferenc@glome.me"
+    "email": "ferenc.szekely@gmail.com"
   }]
 }
