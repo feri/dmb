@@ -22,8 +22,9 @@ var sockets = {};
 var numUsers = 0;
 
 var config = require('./config');
+var allowed = require('./allowed');
 
-//var debug = require('debug');
+var debug = require('debug');
 var path = require('path');
 var express = require('express');
 var app = express();
@@ -107,11 +108,12 @@ redis_downlink.subscribe(dmb_downstream);
  *
  * Client to backend service
  *
- *   client:backend:{payload}
+ *   {token}:{bkid}:{payload}
  *
  * Client to client
  *
- *   client:{token}:{payload}
+ *   {token}:{bkid}:{payload}
+ *   where {bkid} is a token of the receiver
  *
  */
 redis_downlink.on("message", function (channel, message) {
@@ -163,11 +165,52 @@ io.on('connection', function (socket) {
     // the client joins to uid room automatically
     console.log('dmb:connect params: ');
     console.log(params);
+
+    if (typeof allowed[params.bkid] === 'undefined') {
+      console.log('bkid is disabled: ' + params.bkid);
+      return;
+    }
+
     socket.join(params.bkid, function() {
+      var ok = true;
       if (typeof params.token != 'undefined')
       {
         socket.appid = params.bkid;
         socket.username = params.token;
+
+        // lame check if this is a backend type or client type connection
+        if (socket.appid == socket.username) {
+          // backend
+          if (allowed[socket.appid].length == 0) {
+            if (params.allowed.length > 0) {
+              // populate which tokens are allowed
+              allowed[socket.appid] = params.allowed;
+            }
+          }
+        } else {
+          if (allowed[socket.appid].length == 0) {
+            console.log('all connections disabled to this backend: ' + socket.appid);
+            ok = false;
+          } else {
+            if (typeof allowed[socket.appid]['all'] !== 'undefined') {
+              // all connections allowed
+              ok = true;
+            } else {
+              console.log('is allowed ' + socket.appid + ' > ' + socket.username + ' ?');
+              console.log(allowed[socket.appid][socket.username]);
+              if (typeof allowed[socket.appid][socket.username] === 'undefined') {
+                console.log('access disabled for this client: ' + socket.username);
+                ok = false;
+              }
+            }
+          }
+        }
+
+        if (ok == false) {
+          // disconnect
+          socket.disconnect();
+          return;
+        }
 
         if (typeof sockets[params.token] == 'undefined')
         {
@@ -194,6 +237,12 @@ io.on('connection', function (socket) {
         data = null;
 
         console.log('new client of ' + socket.username + ', sid: ' + lastsid);
+
+        // a broadcast
+        io.sockets.in(params.bkid).emit("dmb:broadcast", '> joined ' + params.token);
+        // a private
+        send('dmb:message', params.bkid, params.token, 'welcome');
+
         ++numUsers;
       }
       else
@@ -201,6 +250,17 @@ io.on('connection', function (socket) {
         console.log('invalid typeof token: ' + typeof params.token + ': ' + params.token);
       }
     });
+  });
+
+  // when client sends a message
+  socket.on('dmb:message', function (params) {
+    console.log('dmb:message params: ');
+    console.log(params);
+
+    io.sockets.in(params.bkid).emit("dmb:broadcast", '> received from: ' + params.token + ' -> ' + params.payload + '@' + params.bkid);
+
+    // a private ack
+    send("dmb:message", params.bkid, params.token, 'sent');
   });
 
   // when the client disconnects
@@ -214,6 +274,7 @@ io.on('connection', function (socket) {
         console.log(sockets[socket.username]);
 
         sockets[socket.username].splice(index, 1);
+
         socket.emit('dmb:disconnected', {});
 
         // push info to DMB about the disconnected client
@@ -231,6 +292,10 @@ io.on('connection', function (socket) {
         data = null;
 
         console.log('client gone: ' + socket.username + ', sid: ' + socket.id);
+
+        // a broadcast
+        io.sockets.in(socket.appid).emit("dmb:broadcast", '> left ' + socket.username);
+
         --numUsers;
       }
       else
