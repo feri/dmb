@@ -1,20 +1,59 @@
 <!doctype html>
 <html>
   <head>
-    <title>Simple backend service for Duplex Message Broker</title>
+    <title>Simple DMB Backend and Client</title>
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script src="dmb_server.js"></script>
     <link media="all" type="text/css" href="dmb.css" rel="stylesheet">
   </head>
   <body>
-    <h1>Duplex Message Broker (DMB) demo server</h1>
+    <h1>Simple DMB Backend and Client</h1>
     <div class="dmb">
       <div class="status"></div>
       <div class="message"></div>
     </div>
-    <ul id="messages"></ul>
+
+    <div class="info">
+      DMB is a message broker where backends can connect. DMB manages a list of backend IDs that are allowed to connect.
+      <br/>
+      Clients connect to backends in a contolled manner. Backends can list the client IDs that are allowed to connect.
+      <br/><br/>
+      This page and the code attached to it acts as a simple backend, but also as a client at the same time.
+      <br/>
+      Opening the page will open a backend where any client can connect to.
+      <br/><br/>
+      The best if you setup and configure a DMB instance. With that you are able to control the backend identifiers that are
+      allowed to connect to DMB.
+      <br/>
+      Please check the <a href="params.js">params.js</a> for configuring the clients that can connect to this backend.
+      <br/><br/>
+      You can fireup different browser windows (or tabs) and test by using different backend and client ids.
+      <br/>
+      You can check if only the allowed clients can join a certain backend. You can broadcast to all clients connected to the same backends.
+      <br/><br/>
+      Soon you will to send direct messages to any backend or client by using their ids.
+      It's yet to be specified what DMB will do with messages received from clients.
+      <br/>
+      Please feel free to add you feature requests in <a href="https://github.com/feri/dmb/issues">github</a>.
+    </div>
+
+    <div class="params">
+      <div class="token">
+        <label for="bkid" >My backend ID ("bkid")</label>
+        <input type="text" length=40 value="bkid" id="bkid"/>
+        <span class="hint">The clients must use this "bkid" in order to connect to this backend.</span>
+      </div>
+      <div class="bkid">
+        <label for="clid">My client ID ("clid")</label>
+        <input type="text" length=40 value="clid" id="clid"/>
+      </div>
+    </div>
+
+    <ul class="dmbcomm" id="messages"></ul>
+    <ul class="dmbcomm" id="alerts"></ul>
+    <ul class="dmbcomm" id="logs"></ul>
     <form action="">
-      <input id="m" autocomplete="off" /><button>Send</button>
+      <input autofocus="true" disabled="disabled" id="m" value="Broadcast to all clients of the backend" autocomplete="off" /><button disabled="disabled">Send</button>
     </form>
   </body>
 </html>

@@ -1,3 +1,17 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font: 13px Helvetica, Arial;
+}
+
+.info {
+  margin: 1em 0 1em 0;
+}
+
 .dmb .status
 {
   height: 5px;
@@ -8,6 +22,7 @@
   top: 0px;
   left: 0px;
   width: 5px;
+  background-color: red;
 }
 .dmb .status.active
 {
@@ -16,4 +31,26 @@
 .dmb .status.unread
 {
   background-color: yellow;
+}
+
+.dmbcomm {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dmbcomm li {
+  padding: 5px 10px;
+}
+
+.dmbcomm li:nth-child(odd) {
+  background: #eeeeee;
+}
+
+.dmbcomm li.broadcast {
+  color: green;
+}
+
+.dmbcomm li.private {
+  color: red;
 }

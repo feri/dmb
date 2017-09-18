@@ -30,25 +30,49 @@ form button {
   padding: 10px;
 }
 
-#messages {
+label {
+  display: block;
+}
+
+div.info {
+  margin: 1em 0 1em 0;
+  padding: 1em 0 1em 0;
+}
+
+span.hint {
+  font-style: italic;
+  display: block;
+}
+
+div.params {
+  padding: 1em 0 1em 0;
+  border-top: 1px solid gray;
+  border-bottom: 1px solid gray;
+}
+
+.params div {
+  margin-bottom: 1em;
+}
+
+.dmbcomm {
   list-style-type: none;
   margin: 0;
   padding: 0;
 }
 
-#messages li {
+.dmbcomm li {
   padding: 5px 10px;
 }
 
-#messages li:nth-child(odd) {
+.dmbcomm li:nth-child(odd) {
   background: #eeeeee;
 }
 
-#messages li.broadcast {
+.dmbcomm li.broadcast {
   color: green;
 }
 
-#messages li.private {
+.dmbcomm li.private {
   color: red;
 }
 

@@ -1,16 +1,25 @@
 <!doctype html>
 <html>
   <head>
-    <title>Simple client for Duplex Message Broker</title>
+    <title>Simple DMB Client</title>
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script src="./dmb_client.js"></script>
+<!--
+    <script src="./simple_test_client.js"></script>
+-->
     <link media="all" type="text/css" href="dmb.css" rel="stylesheet">
   </head>
   <body>
-    <h2>DMB Client Test</h2>
+    <h1>Simple DMB Client</h1>
+    <div class="info">Backend: <span class="bkid"></span></div>
+
     <div class="dmb">
-      <div class="status"></div>
+      <div class="status active"></div>
       <div class="message"></div>
     </div>
+
+    <ul class="dmbcomm" id="messages"></ul>
+    <ul class="dmbcomm" id="alerts"></ul>
+    <ul class="dmbcomm" id="logs"></ul>
   </body>
 </html>

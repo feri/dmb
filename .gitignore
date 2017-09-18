@@ -2,4 +2,5 @@ node_modules
 logs
 *.bak
 *~
-
+./*.sh
+allowed.js

@@ -3,80 +3,94 @@
  * Simple client script for Duplex Message Broker (DMB)
  *
  *
- * {bkid}: DMB will assign a unique id from bacends
- * {token}: can be used to identify this client
+ * {bkid}: DMB will assign a unique id from backends
+ * {clid}: can be used to identify this client
  */
-var dmb_params = dmb_params || { 'bkid': 'testserver', 'token': 'hello' };
+var connection = true;
+var dmb_params = dmb_params || { 'bkid': 'demo_backend', 'clid': 'demo_client' };
+
+function updateStatus(connected = false, message = '') {
+  if (connected) {
+    jQuery('.dmb .status').addClass('active');
+  } else {
+    jQuery('.dmb .status').removeClass('active');
+    jQuery('.dmb .message').text(message);
+  }
+}
 
 jQuery(document).ready(function()
 {
+  if (typeof dmb_params.bkid !== "undefined") {
+    jQuery('.info .bkid').text(dmb_params.bkid);
+  }
+
   // load socket.io
   jQuery.getScript("/socket.io/socket.io.js")
     .done(function( script, textStatus ) {
       // initiate the DMB connection
       jQuery(document).trigger('startdmb', dmb_params);
-      console.log( textStatus + ' startdmb triggered');
     })
     .fail(function( jqxhr, settings, exception ) {
-      jQuery("dmb message").text("Triggered ajaxError handler.");
+      updateStatus(false, "Connection failed");
   });
 });
 
 // dmb magic; connect to web socket; parse messages etc.
 jQuery(document).on('startdmb', function(event, dmb_params)
 {
+  console.log('startdmb triggered');
+
   if (typeof(dmb_params['bkid']) !== 'undefined')
   {
     // dangerous?
-    window.socket = io(window.location.protocol + '//' + window.location.host);
+    window.socket = io();
     var socket = window.socket;
 
-    if (typeof dmb_params['token'] == 'undefined' || dmb_params['token'] == '')
+    if (typeof dmb_params['clid'] == 'undefined' || dmb_params['clid'] == '')
     {
-      dmb_params['token'] = 'hello'; // TODO: generate some random string
+      dmb_params['clid'] = 'demo_client'; // TODO: generate some random string
     }
 
     // say hello to DMB
     socket.emit('dmb:connect', dmb_params);
 
-    // want to hook into this one?
+    // want to hook to this one?
     socket.on('disconnect', function(msg)
-    {});
+    {
+      updateStatus(false, "Connection failed");
+    });
+    socket.on('dmb:disconnect', function(msg)
+    {
+      updateStatus(false, "Connection failed");
+    });
 
     // want to hook into this one?
+    socket.on('connect', function(msg)
+    {
+      updateStatus(true);
+    });
     socket.on('dmb:connected', function(msg)
     {
-      jQuery('.dmb .status').addClass('active');
+      updateStatus(true);
     });
 
-    // received a broadcast from GNB
-    socket.on('dmb:broadcast', function(message)
+    // received a broadcast from DMB
+    socket.on('dmb:broadcast', function(broadcast)
     {
-      jQuery('.dmb .status').addClass('unread');
-      jQuery('.dmb .message').text(message);
+      jQuery('#messages').prepend($('<li class="broadcast">').text('broadcast from '+ broadcast.sender + ': ' + broadcast.payload));
     });
 
-    // received a direct message from GNB
+    // received a direct message from DMB
     socket.on('dmb:message', function(msg)
     {
-      jQuery('.dmb .status').addClass('unread');
-      jQuery('.dmb .message').text(msg);
+      jQuery('#messages').prepend($('<li class="private">').text(msg));
     });
 
-    // received data from GNB
+    // received data from DMB
+    // TODO: finish
     socket.on('dmb:data', function(msg) {
       var splits = msg.split(':');
       var response = JSON.parse(window.atob(splits[1]));
-
-      switch (splits[0]) {
-        case "user":
-          jQuery.cookie('magic', response.key + response.user.trackingtoken.token + response.user.glomeid);
-          window.location.href = '/';
-          break;
-        case "unpair":
-          window.location.href = '/';
-          break;
-      }
     });
   }
 });
