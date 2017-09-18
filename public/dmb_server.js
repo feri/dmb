@@ -30,7 +30,7 @@ jQuery(document).ready(function()
         jQuery(document).trigger('startdmb', dmb_params);
       })
       .fail(function(jqxhr, settings, exception) {
-        jQuery(".dmb .message").text("Triggered ajaxError handler.");
+        jQuery(".dmb .message").text("Connection to DMB failed");
       });
   }
 
