@@ -54,6 +54,7 @@ var config = {
 
 server.listen(port, host, function () {
   console.log('Server listening on %s at port %d', host, port);
+  console.log('Allowed backends: ', allowed);
 });
 
 // Simple routing
