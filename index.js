@@ -33,7 +33,7 @@ var io = require('socket.io')(server);
 var host = process.env.DMB_HOST || config.host || "dmb.local";
 var port = process.env.DMB_PORT || config.port || 8084;
 
-// Glome Redis connection
+// Redis connection
 var redis = require("redis");
 var redis_host = process.env.REDIS_HOST || config.redis.host || "localhost";
 var redis_port = process.env.REDIS_PORT || config.redis.port || 6379;
