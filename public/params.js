@@ -7,9 +7,10 @@ var dmb_params = {
   bkid: 'demo_backend',
   // client id for demo purposes
   // the client can only connect if the id is added to the allowed array below
-  clid: 'demo_client',
+  clid: 'backend_client',
   // allowed client ids that can talk to this backend instance
   allowed: [
-    'demo_client',
+    'browser_client',
+    'backend_client',
   ],
 };

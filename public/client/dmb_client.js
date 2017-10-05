@@ -7,7 +7,7 @@
  * {clid}: can be used to identify this client
  */
 var connection = true;
-var dmb_params = dmb_params || { 'bkid': 'demo_backend', 'clid': 'demo_client' };
+var dmb_params = dmb_params || { bkid: 'demo_backend', clid: 'browser_client' };
 
 function updateStatus(connected = false, message = '') {
   if (connected) {
@@ -20,8 +20,8 @@ function updateStatus(connected = false, message = '') {
 
 jQuery(document).ready(function()
 {
-  if (typeof dmb_params.bkid !== "undefined") {
-    jQuery('.info .bkid').text(dmb_params.bkid);
+  if (typeof dmb_params.clid !== "undefined") {
+    jQuery('.info .clid').text(dmb_params.clid);
   }
 
   // load socket.io
@@ -40,15 +40,14 @@ jQuery(document).on('startdmb', function(event, dmb_params)
 {
   console.log('startdmb triggered');
 
-  if (typeof(dmb_params['bkid']) !== 'undefined')
+  if (typeof(dmb_params['clid']) !== 'undefined')
   {
-    // dangerous?
     window.socket = io();
     var socket = window.socket;
 
     if (typeof dmb_params['clid'] == 'undefined' || dmb_params['clid'] == '')
     {
-      dmb_params['clid'] = 'demo_client'; // TODO: generate some random string
+      dmb_params['clid'] = 'browser_client';
     }
 
     // say hello to DMB

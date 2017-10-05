@@ -1,8 +1,8 @@
 /**
- * DMB configuration
+ * DMB server configuration
  */
 var config = {
-  // HTTP server port for incoming requests
+  // HTTP server port for incoming transfer requests
   host: 'dmb.local',
   port: 8084,
 

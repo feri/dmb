@@ -7,12 +7,15 @@
  * o REDIS_HOST: Host name of the Redis server to connect to (default: localhost)
  * o REDIS_PORT: Port of the Redis server (default: 6379)
  *
+ * o DEBUG: set logging of Node.JS
+ *   export DEBUG=* will result in super verbose logging
+ *
  * See README.md for details.
  *
- * Author: ferenc at glome dot me
+ * Author: ferenc.szekely@urho.eu
  * License: MIT
  *
- * Copyright (c) 2016 Ferenc Székely
+ * Copyright (c) 2016-2017 Ferenc Székely
  * Copyright (c) 2014-2015 Glome Oy
  *
  * Forked from glome/gnb
@@ -22,16 +25,27 @@ var sockets = {};
 var numUsers = 0;
 
 var config = require('./config');
-var allowed = require('./allowed');
-
-var debug = require('debug');
-var path = require('path');
-var express = require('express');
-var app = express();
-var server = require('http').createServer(app);
-var io = require('socket.io')(server);
+// webscoket server host and port configurable; see config.js
 var host = process.env.DMB_HOST || config.host || "dmb.local";
 var port = process.env.DMB_PORT || config.port || 8084;
+
+// list of allowed backend ids; see allowed.js
+var allowed = require('./allowed');
+
+const express = require('express');
+const app = express();
+
+//var debug = require('debug');
+//var path = require('path');
+
+// Websocket server
+const server = require('http').createServer();
+const io = require('socket.io')(server, {
+  // below are engine.IO options
+  pingInterval: 10000,
+  pingTimeout: 5000,
+  cookie: false
+});
 
 // Redis connection
 var redis = require("redis");
@@ -52,6 +66,7 @@ var config = {
   broadcast_label: 'broadcast'
 };
 
+// start the webscoket server
 server.listen(port, host, function () {
   console.log('Server listening on %s at port %d', host, port);
   console.log('Allowed backends: ', allowed);
@@ -157,6 +172,10 @@ redis_downlink.on("message", function (channel, message) {
  * Register callbacks
  */
 io.on('connection', function (socket) {
+
+  socket.on('error', (error) => {
+    console.log('socket error: ', error);
+  });
   // DMB assigns a unique ID {bkid} for backend service
   // Regular clients must specify a unique {clid}
   socket.on('dmb:broadcast', function (params) {
@@ -164,7 +183,6 @@ io.on('connection', function (socket) {
     console.log('socket broadcast:');
     console.log(params);
   });
-
   // DMB assigns a unique ID {bkid} for backend service
   // Regular clients must specify a unique {clid}
   socket.on('dmb:connect', function (params) {
@@ -266,9 +284,10 @@ io.on('connection', function (socket) {
 
         // a private greeting
         var message = {
+          sender: params.bkid,
           payload: "Hello from backend service: " + params.bkid + '!',
         }
-        send('dmb:message', params.bkid, params.clid, JSON.stringify(message));
+        send('dmb:message', params.bkid, params.clid, message);
 
         ++numUsers;
       }
