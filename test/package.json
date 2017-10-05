@@ -1,0 +1,17 @@
+{
+  "name": "Simple_DMB_Backend",
+  "version": "0.0.1",
+  "description": "Simple app that connects to a DMB server as a client.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/feri/dmb.git"
+  },
+  "dependencies": {
+    "socket.io-client": ">=2.0.3",
+    "express": ">=4.9.3"
+  },
+  "maintainers": [{
+    "name": "ferenc",
+    "email": "ferenc.szekely@gmail.com"
+  }]
+}
