@@ -13,8 +13,6 @@
  *
  */
 const io = require('socket.io-client');
-const express = require('express');
-const app = express();
 
 // private config; you may change it
 const config = require('./config');
